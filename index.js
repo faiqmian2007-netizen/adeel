@@ -16,11 +16,12 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 4000;
-const BASE_PATH = process.env.BASE_PATH || '';
+const BASE_PATH = process.env.BASE_PATH || ''; // For sub-directory deployments if needed
 
-// Middleware
-app.set('trust proxy', 1); // Trust first proxy for rate limiting
+// Trust proxy (for AWS/production)
+app.set('trust proxy', 1);
 
+// Security headers
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -36,111 +37,99 @@ app.use(helmet({
   }
 }));
 
+// CORS
 app.use(cors());
 
-// JSON parsing for specific routes only (not for file uploads)
+// Body parsers for APIs
 app.use('/api/auth', express.json({ limit: '10mb' }));
 app.use('/api/admin', express.json({ limit: '10mb' }));
 app.use('/api/cookies', express.json({ limit: '10mb' }));
-
-// URL encoded for form data
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting
+// Rate limiting for APIs
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 100,
   message: 'Too many requests from this IP, please try again later.'
 });
 app.use('/api/', limiter);
 
-// Static file headers and MIME types - MUST come before express.static
+// Static file headers (MIME types, cache)
 app.use((req, res, next) => {
-  // Set proper MIME types for CSS and JS files
   if (req.url.endsWith('.css')) {
     res.setHeader('Content-Type', 'text/css; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+    res.setHeader('Cache-Control', 'public, max-age=86400');
   } else if (req.url.endsWith('.js')) {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+    res.setHeader('Cache-Control', 'public, max-age=86400');
   } else if (req.url.match(/\.(png|jpg|jpeg|gif|ico|svg)$/)) {
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year for images
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
   } else if (req.url.match(/\.(html|htm)$/)) {
     res.setHeader('Cache-Control', 'no-cache');
   }
   next();
 });
 
-// Serve static files with proper configuration
+// Serve static files (CSS, JS, images, HTML)
+const staticOptions = {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    } else if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    }
+  }
+};
+
 if (BASE_PATH) {
-  app.use(BASE_PATH, express.static('public', {
-    maxAge: '1d',
-    etag: true,
-    lastModified: true,
-    setHeaders: (res, path) => {
-      // Ensure CSS files have correct MIME type
-      if (path.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css; charset=utf-8');
-      }
-      // Ensure JS files have correct MIME type
-      if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      }
-    }
-  }));
+  app.use(BASE_PATH, express.static(path.join(__dirname, 'public'), staticOptions));
 } else {
-  app.use(express.static('public', {
-    maxAge: '1d',
-    etag: true,
-    lastModified: true,
-    setHeaders: (res, path) => {
-      // Ensure CSS files have correct MIME type
-      if (path.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css; charset=utf-8');
-      }
-      // Ensure JS files have correct MIME type
-      if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      }
-    }
-  }));
+  app.use(express.static(path.join(__dirname, 'public'), staticOptions));
 }
 
-// Explicit CSS route for external hosting compatibility
+// Explicit CSS/JS routes for external compatibility
 app.get('/css/:filename', (req, res) => {
-  const filename = req.params.filename;
   res.setHeader('Content-Type', 'text/css; charset=utf-8');
-  res.sendFile(path.join(__dirname, 'public', 'css', filename));
+  res.sendFile(path.join(__dirname, 'public', 'css', req.params.filename));
 });
-
-// Explicit JS route for external hosting compatibility
 app.get('/js/:filename', (req, res) => {
-  const filename = req.params.filename;
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.sendFile(path.join(__dirname, 'public', 'js', filename));
+  res.sendFile(path.join(__dirname, 'public', 'js', req.params.filename));
 });
 
-// Basic route for testing
+// HTML page routes
 app.get('/', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
-// Admin panel route
 app.get('/admin', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Make io accessible to routes
+// Example: Serve other HTML pages dynamically if needed
+const extraHtmlPages = [
+  'dashboard', 'login', 'register', 'cookie-check', 'approval', 'create-server', 'create-post-server'
+];
+extraHtmlPages.forEach(page =>
+  app.get(`/${page}`, (req, res) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.sendFile(path.join(__dirname, 'public', `${page}.html`));
+  })
+);
+
+// Make io accessible in routes
 app.set('io', io);
 
-// API Routes
+// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Server Manager API is running', timestamp: new Date().toISOString() });
 });
 
-// Import and use route handlers
+// Import and use API routes
 const { router: authRouter } = require('./routes/auth');
 const { router: serverRouter } = require('./routes/servers');
 const { router: cookieRouter } = require('./routes/cookies');
@@ -154,8 +143,7 @@ app.use('/api/admin', adminRouter);
 // Socket.IO for real-time features
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
-  
-  // Handle user authentication for Socket.IO
+
   socket.on('authenticate', (token) => {
     try {
       const { verifyToken } = require('./middleware/auth');
@@ -163,12 +151,11 @@ io.on('connection', (socket) => {
       socket.userId = decoded.userId;
       socket.join(`user-${decoded.userId}`);
       console.log(`User ${decoded.userId} authenticated and joined room`);
-    } catch (error) {
+    } catch {
       socket.emit('authError', 'Invalid token');
     }
   });
 
-  // Handle joining server-specific rooms for live logs
   socket.on('joinServerRoom', (serverId) => {
     if (socket.userId) {
       socket.join(`server-${serverId}`);
@@ -178,9 +165,9 @@ io.on('connection', (socket) => {
 
   socket.on('leaveServerRoom', (serverId) => {
     socket.leave(`server-${serverId}`);
-    console.log(`User left server room: ${serverId}`);
+    console.log('User left server room:', serverId);
   });
-  
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
