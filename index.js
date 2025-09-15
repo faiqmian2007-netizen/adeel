@@ -20,19 +20,26 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.set('trust proxy', 1); // Trust first proxy for rate limiting
 
+app.disable('x-powered-by');
 app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: {
+    useDefaults: true,
     directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      connectSrc: ["'self'", "ws:", "wss:", "http:", "https:"],
-      imgSrc: ["'self'", "data:", "https:", "http:"],
-      fontSrc: ["'self'", "https:", "data:"],
+      defaultSrc: ["'self'", 'blob:', 'data:'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https:', 'data:'],
+      styleSrcElem: ["'self'", "'unsafe-inline'", 'https:', 'data:'],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'blob:'],
+      scriptSrcElem: ["'self'", "'unsafe-inline'", 'https:', 'blob:'],
+      connectSrc: ["*"],
+      imgSrc: ["'self'", 'data:', 'https:', 'http:'],
+      fontSrc: ["'self'", 'https:', 'data:'],
       objectSrc: ["'none'"],
-      mediaSrc: ["'self'"]
+      frameAncestors: ["'self'"],
+      baseUri: ["'self'"]
     }
-  }
+  },
 }));
 
 app.use(cors());
@@ -54,7 +61,10 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Serve static files (use absolute path for reliability in production)
-app.use(express.static(path.join(__dirname, 'public')));
+const publicDir = path.join(__dirname, 'public');
+app.use(express.static(publicDir));
+app.use('/css', express.static(path.join(publicDir, 'css')));
+app.use('/js', express.static(path.join(publicDir, 'js')));
 
 // Cache control headers for better performance
 app.use((req, res, next) => {
@@ -72,12 +82,12 @@ app.use((req, res, next) => {
 
 // Basic route for testing
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.type('html').sendFile(path.join(publicDir, 'index.html'));
 });
 
 // Admin panel route
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+  res.type('html').sendFile(path.join(publicDir, 'admin.html'));
 });
 
 // Make io accessible to routes
