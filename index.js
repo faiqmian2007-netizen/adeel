@@ -53,8 +53,8 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Serve static files
-app.use(express.static('public'));
+// Serve static files (use absolute path for reliability in production)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Cache control headers for better performance
 app.use((req, res, next) => {
