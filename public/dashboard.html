@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - 0WN3R AD33L</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="app">
+        <nav class="navbar">
+            <div class="nav-content">
+                <div class="nav-brand">
+                    <h1>0WN3R AD33L</h1>
+                </div>
+                <div class="nav-actions">
+                    <span id="welcomeText" class="welcome-text"></span>
+                    <button id="logoutBtn" class="btn secondary">Logout</button>
+                </div>
+            </div>
+        </nav>
+        
+        <main class="main-content">
+            <div class="container">
+                <div class="profile-section">
+                    <div class="profile-card">
+                        <div class="profile-info">
+                            <div class="avatar">
+                                <span id="userInitials"></span>
+                            </div>
+                            <div class="user-details">
+                                <h2 id="userName"></h2>
+                                <p id="userEmail"></p>
+                                <div class="user-stats">
+                                    <span class="stat">
+                                        <strong id="serverCount">0</strong> Servers
+                                    </span>
+                                    <span class="stat">
+                                        <strong id="runningCount">0</strong> Running
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button id="createServerBtn" class="btn primary create-btn">
+                                <span>+ Create Server</span>
+                            </button>
+                            <button id="cookieCheckBtn" class="btn secondary cookie-check-btn">
+                                <span>🍪 Cookie Check</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="servers-section">
+                    <div class="section-header">
+                        <h3>Your Servers</h3>
+                        <div class="server-filters">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="running">Running</button>
+                            <button class="filter-btn" data-filter="stopped">Stopped</button>
+                        </div>
+                    </div>
+                    
+                    <div id="serversGrid" class="servers-grid">
+                        <div class="empty-state" id="emptyState">
+                            <div class="empty-icon">📊</div>
+                            <h3>No servers yet</h3>
+                            <p>Create your first server to start managing your automation</p>
+                            <button class="btn primary" onclick="document.getElementById('createServerBtn').click()">
+                                Create Your First Server
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Console Section -->
+                <div id="consoleSection" class="console-section hidden">
+                    <div class="console-header">
+                        <div class="console-title">
+                            <h3 id="consoleTitle">Server Console</h3>
+                            <span id="consoleStatus" class="console-status"></span>
+                        </div>
+                        <div class="console-controls">
+                            <button id="consoleClearBtn" class="btn secondary small">Clear</button>
+                            <button id="consoleCloseBtn" class="btn secondary small">Close</button>
+                        </div>
+                    </div>
+                    <div id="logsContainer" class="logs-container">
+                        <div class="log-loading">
+                            <div class="spinner"></div>
+                            <span>Loading logs...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Enhanced Starry Night Background -->
+    <div class="stars-layer1"></div>
+    <div class="stars-layer2"></div>
+    <div class="twinkling-layer1"></div>
+    <div class="twinkling-layer2"></div>
+    <div class="shooting-stars"></div>
+    
+    <!-- Notification Toast -->
+    <div id="notification" class="notification hidden">
+        <div class="notification-content">
+            <span class="notification-icon"></span>
+            <span class="notification-message"></span>
+        </div>
+    </div>
+    
+    <!-- Server Selection Modal -->
+    <div id="serverSelectionModal" class="modal hidden">
+        <div class="modal-content server-selection-modal">
+            <div class="modal-header">
+                <h3>Select Server Type</h3>
+                <button class="modal-close" id="closeServerSelection">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="server-options">
+                    <div class="server-option" id="messengerServerOption">
+                        <div class="option-icon">💬</div>
+                        <div class="option-content">
+                            <h4>Messenger Server</h4>
+                            <p>Send automated messages to Facebook groups</p>
+                        </div>
+                        <div class="option-arrow">→</div>
+                    </div>
+                    <div class="server-option" id="postServerOption">
+                        <div class="option-icon">📝</div>
+                        <div class="option-content">
+                            <h4>FB Post Server</h4>
+                            <p>Send automated comments to Facebook posts</p>
+                        </div>
+                        <div class="option-arrow">→</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
