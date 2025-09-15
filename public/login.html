@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Server Manager</title>
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>Welcome Back</h1>
+                <p>Sign in to your Server Manager account</p>
+            </div>
+            
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required placeholder="Enter your email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter your password">
+                </div>
+                
+                <button type="submit" class="btn primary" id="loginBtn">
+                    <span class="btn-text">Sign In</span>
+                    <div class="spinner hidden"></div>
+                </button>
+                
+                <div class="auth-links">
+                    <p>Don't have an account? <a href="register.html">Sign up here</a></p>
+                </div>
+            </form>
+            
+            <div id="message" class="message hidden"></div>
+        </div>
+    </div>
+    
+    <!-- Enhanced Starry Night Background -->
+    <div class="stars-layer1"></div>
+    <div class="stars-layer2"></div>
+    <div class="twinkling-layer1"></div>
+    <div class="twinkling-layer2"></div>
+    <div class="shooting-stars"></div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>
