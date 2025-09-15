@@ -15,7 +15,7 @@ const io = new Server(server, {
   }
 });
 
-const PORT = process.env.PORT || 20485;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.set('trust proxy', 1); // Trust first proxy for rate limiting
