@@ -15,7 +15,7 @@ const io = new Server(server, {
   }
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 const BASE_PATH = process.env.BASE_PATH || '';
 
 // Middleware
@@ -56,13 +56,20 @@ app.use('/api/', limiter);
 
 // Static file headers and MIME types - MUST come before express.static
 app.use((req, res, next) => {
+  // Log all static file requests for debugging
+  if (req.url.includes('/css/') || req.url.includes('/js/') || req.url.includes('.css') || req.url.includes('.js')) {
+    console.log(`📁 Static file request: ${req.method} ${req.url}`);
+  }
+  
   // Set proper MIME types for CSS and JS files
   if (req.url.endsWith('.css')) {
     res.setHeader('Content-Type', 'text/css; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+    res.setHeader('Access-Control-Allow-Origin', '*');
   } else if (req.url.endsWith('.js')) {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+    res.setHeader('Access-Control-Allow-Origin', '*');
   } else if (req.url.match(/\.(png|jpg|jpeg|gif|ico|svg)$/)) {
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year for images
   } else if (req.url.match(/\.(html|htm)$/)) {
@@ -71,53 +78,64 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files with proper configuration
+// Serve static files with proper configuration for AWS deployment
+const staticOptions = {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    // Force proper MIME types for CSS and JS files
+    if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    } else if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    }
+    
+    // Add additional headers for better compatibility
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+  }
+};
+
+// Always serve static files from root for AWS compatibility
+app.use(express.static(path.join(__dirname, 'public'), staticOptions));
+
+// If BASE_PATH is set, also serve from base path
 if (BASE_PATH) {
-  app.use(BASE_PATH, express.static('public', {
-    maxAge: '1d',
-    etag: true,
-    lastModified: true,
-    setHeaders: (res, path) => {
-      // Ensure CSS files have correct MIME type
-      if (path.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css; charset=utf-8');
-      }
-      // Ensure JS files have correct MIME type
-      if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      }
-    }
-  }));
-} else {
-  app.use(express.static('public', {
-    maxAge: '1d',
-    etag: true,
-    lastModified: true,
-    setHeaders: (res, path) => {
-      // Ensure CSS files have correct MIME type
-      if (path.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css; charset=utf-8');
-      }
-      // Ensure JS files have correct MIME type
-      if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      }
-    }
-  }));
+  app.use(BASE_PATH, express.static(path.join(__dirname, 'public'), staticOptions));
 }
 
-// Explicit CSS route for external hosting compatibility
+// Enhanced explicit routes for AWS deployment compatibility
 app.get('/css/:filename', (req, res) => {
   const filename = req.params.filename;
+  const filePath = path.join(__dirname, 'public', 'css', filename);
+  
   res.setHeader('Content-Type', 'text/css; charset=utf-8');
-  res.sendFile(path.join(__dirname, 'public', 'css', filename));
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  
+  // Check if file exists before sending
+  if (require('fs').existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('CSS file not found');
+  }
 });
 
-// Explicit JS route for external hosting compatibility
 app.get('/js/:filename', (req, res) => {
   const filename = req.params.filename;
+  const filePath = path.join(__dirname, 'public', 'js', filename);
+  
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.sendFile(path.join(__dirname, 'public', 'js', filename));
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  
+  // Check if file exists before sending
+  if (require('fs').existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('JS file not found');
+  }
 });
 
 // Basic route for testing
@@ -138,6 +156,58 @@ app.set('io', io);
 // API Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Server Manager API is running', timestamp: new Date().toISOString() });
+});
+
+// Debug endpoint for AWS deployment troubleshooting
+app.get('/api/debug', (req, res) => {
+  const fs = require('fs');
+  const publicPath = path.join(__dirname, 'public');
+  const cssPath = path.join(publicPath, 'css');
+  const jsPath = path.join(publicPath, 'js');
+  
+  res.json({
+    server: {
+      port: PORT,
+      basePath: BASE_PATH,
+      env: process.env.NODE_ENV || 'development',
+      platform: process.platform,
+      nodeVersion: process.version
+    },
+    paths: {
+      __dirname: __dirname,
+      publicPath: publicPath,
+      cssPath: cssPath,
+      jsPath: jsPath
+    },
+    directories: {
+      publicExists: fs.existsSync(publicPath),
+      cssExists: fs.existsSync(cssPath),
+      jsExists: fs.existsSync(jsPath),
+      cssFiles: fs.existsSync(cssPath) ? fs.readdirSync(cssPath) : [],
+      jsFiles: fs.existsSync(jsPath) ? fs.readdirSync(jsPath) : []
+    },
+    headers: {
+      host: req.get('host'),
+      userAgent: req.get('user-agent'),
+      origin: req.get('origin'),
+      referer: req.get('referer')
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Simple CSS test endpoint
+app.get('/api/test-css', (req, res) => {
+  const cssFile = path.join(__dirname, 'public', 'css', 'style.css');
+  const fs = require('fs');
+  
+  if (fs.existsSync(cssFile)) {
+    res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(cssFile);
+  } else {
+    res.status(404).json({ error: 'CSS file not found', path: cssFile });
+  }
 });
 
 // Import and use route handlers
