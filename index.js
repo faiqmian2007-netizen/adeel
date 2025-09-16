@@ -15,7 +15,7 @@ const io = new Server(server, {
   }
 });
 
-const PORT = process.env.PORT || 20485;
+const PORT = process.env.PORT || 4000;
 const BASE_PATH = process.env.BASE_PATH || '';
 
 // Middleware
